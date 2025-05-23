@@ -38,7 +38,7 @@ public class Main {
         for (String charStream; (charStream = in.readLine()) != null && !charStream.isEmpty(); ) {
 
         }
-        String httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+        String httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
         if ("GET".equals(lines[0])) {
             if (lines[1].equals("/")) {
                 httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
