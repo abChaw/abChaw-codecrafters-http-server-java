@@ -38,12 +38,13 @@ public class Main {
         for (String charStream; (charStream = in.readLine()) != null && !charStream.isEmpty(); ) {
 
         }
-        String httpResponse = "HTTP/1.1 404 Not Found\r\n";
+        String httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
         if ("GET".equals(lines[0])) {
-            if (lines[1].startsWith("/")) {
-                httpResponse = "HTTP/1.1 200 OK\r\n";
+            if (lines[1].equals("/")) {
+                httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+            }
                 String msgBody = "";
-                if (lines[1].startsWith("/echo")) {
+            if (lines[1].startsWith("/echo")) {
                     msgBody = lines[1].substring(lines[1].indexOf('o') + 2);
                     String hContentType = "Content-Type: text/plain\r\n";
                     String hContentLength = "Content-Length:" + msgBody.length() + "\r\n\r\n";
@@ -51,7 +52,7 @@ public class Main {
                     httpResponse += hContentType + hContentLength + msgBody;
                 }
 
-            }
+
         }
         return httpResponse;
     }
