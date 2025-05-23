@@ -38,9 +38,8 @@ public class Main {
         for (String charStream; (charStream = in.readLine()) != null && !charStream.isEmpty(); ) {
 
         }
-        String httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+        String httpResponse = "HTTP/1.1 200 OK\r\n";
         if ("GET".equals(lines[0]) && lines[1].startsWith("/echo")) {
-            httpResponse = "HTTP/1.1 200 OK\r\n";
             String msgBody=lines[1].substring(lines[1].indexOf('o') + 2);
             String hContentType="Content-Type: text/plain\r\n";
             String hContentLength="Content-Length:" + msgBody.length()+ "\r\n\r\n";
