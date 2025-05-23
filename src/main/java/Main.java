@@ -38,22 +38,26 @@ public class Main {
         for (String charStream; (charStream = in.readLine()) != null && !charStream.isEmpty(); ) {
 
         }
-        String httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+        String httpResponse = "HTTP/1.1 200 OK\r\n";
+        String hContentType = "Content-Type: text/plain\r\n";
+        String hContentLength = "Content-Length:" + 0 + "\r\n\r\n";
+        String msgBody = "";
         if ("GET".equals(lines[0])) {
             if (lines[1].equals("/")) {
-                httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+                httpResponse += "\r\n";
             }
-                String msgBody = "";
+
             if (lines[1].startsWith("/echo")) {
                     msgBody = lines[1].substring(lines[1].indexOf('o') + 2);
-                    String hContentType = "Content-Type: text/plain\r\n";
-                    String hContentLength = "Content-Length:" + msgBody.length() + "\r\n\r\n";
+                    hContentType = "Content-Type: text/plain\r\n";
+                    hContentLength = "Content-Length:" + msgBody.length() + "\r\n\r\n";
 
-                    httpResponse += hContentType + hContentLength + msgBody;
+
                 }
 
 
         }
-        return httpResponse;
+       return  httpResponse + hContentType + hContentLength + msgBody;
+        //return httpResponse;
     }
 }
