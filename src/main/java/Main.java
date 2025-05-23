@@ -15,20 +15,33 @@ public class Main {
     //   // Since the tester restarts your program quite often, setting SO_REUSEADDR
     //   // ensures that we don't run into 'Address already in use' errors
       serverSocket.setReuseAddress(true);
+      while(true) {
+          Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
 
-      Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-      BufferedReader in = new BufferedReader(
-              new InputStreamReader(clientSocket.getInputStream())
-      );
-       for (String line; (line = in.readLine()) != null && !line.isEmpty(); ) {}
-
-       String httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
-       OutputStream  out = clientSocket.getOutputStream();
-       out.write("HTTP/1.1 200 OK\r\n\r\n".getBytes(StandardCharsets.UTF_8));
-       clientSocket.close();
-       System.out.println("Response sent, connection closed");
+          String httpResponse = getString(clientSocket);
+          OutputStream out = clientSocket.getOutputStream();
+          out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+          clientSocket.close();
+          System.out.println("Response sent, connection closed");
+      }
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
      }
   }
+
+    private static String getString(Socket clientSocket) throws IOException {
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(clientSocket.getInputStream())
+        );
+        String line = in.readLine();
+        String[] lines = line.split(" ");
+        for (String charStream; (charStream = in.readLine()) != null && !charStream.isEmpty(); ) {
+
+        }
+        String httpResponse = "HTTP/1.1 404 Not Found\r\n\r\n";
+        if ("GET".equals(lines[0]) && "/".equals(lines[1])) {
+            httpResponse = "HTTP/1.1 200 OK\r\n\r\n";
+        }
+        return httpResponse;
+    }
 }
