@@ -7,38 +7,38 @@ import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
-        // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
-
-        // Uncomment this block to pass the first stage
-        //
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Runtime.getRuntime().availableProcessors());
         try (ServerSocket serverSocket = new ServerSocket(4221)) {
-            //
-            //   // Since the tester restarts your program quite often, setting SO_REUSEADDR
-            //   // ensures that we don't run into 'Address already in use' errors
+          
             serverSocket.setReuseAddress(true);
             while (true) {
                 Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-
-                String httpResponse = getString(clientSocket);
-                OutputStream out = clientSocket.getOutputStream();
-                out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
-                clientSocket.close();
+                pool.submit(() -> handle(clientSocket));
+               // String httpResponse = getString(clientSocket);
+//                OutputStream out = clientSocket.getOutputStream();
+//                out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+//                clientSocket.close();
                 System.out.println("Response sent, connection closed");
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
+        }finally {
+            pool.shutdown();                          // stop accepting new tasks on exit
         }
     }
 
-    private static String getString(Socket clientSocket) throws IOException {
-        BufferedReader in = new BufferedReader(
+    private static void handle(Socket clientSocket)  {
+       try( BufferedReader in = new BufferedReader(
                 new InputStreamReader(clientSocket.getInputStream())
-        );
+        );){
         StringBuilder requestData = new StringBuilder(in.readLine());
       //  HttpRequest request = HttpRequest.parseFromSocket(in);
         String line="";
@@ -72,8 +72,15 @@ public class Main {
 
             }
         }
-        System.out.println(httpResponse + hContentType + hContentLength + msgBody);
-       return  httpResponse + hContentType + hContentLength + msgBody;
+           httpResponse=  httpResponse + hContentType + hContentLength + msgBody;
+        OutputStream out = clientSocket.getOutputStream();
+        out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+        clientSocket.close();
+       } catch (IOException e) {
+           System.out.println("Client error: " + e.getMessage());
+       }
+       // System.out.println(httpResponse + hContentType + hContentLength + msgBody);
+      // return  httpResponse + hContentType + hContentLength + msgBody;
         //return httpResponse;
     }
 }
