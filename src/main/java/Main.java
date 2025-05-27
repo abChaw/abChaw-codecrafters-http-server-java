@@ -1,89 +1,131 @@
-import com.sun.net.httpserver.HttpHandler;
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 public class Main {
 
-    private static Path rootDir= Paths.get(".").toAbsolutePath().normalize();
+    private static Path rootDir = Paths.get(".").toAbsolutePath().normalize();
+
     public static void main(String[] args) {
         System.out.println("Logs from your program will appear here!");
 
         for (int i = 0; i < args.length - 1; i++) {
             if ("--directory".equals(args[i])) {
-                rootDir=Paths.get(args[i + 1]).toAbsolutePath().normalize();
+                rootDir = Paths.get(args[i + 1]).toAbsolutePath().normalize();
             }
         }
+
+        processConnectionRequests();
+    }
+
+    private static void processConnectionRequests() {
         ExecutorService pool = Executors.newFixedThreadPool(
                 Runtime.getRuntime().availableProcessors());
         try (ServerSocket serverSocket = new ServerSocket(4221)) {
-          
             serverSocket.setReuseAddress(true);
+
             while (true) {
                 Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-                pool.submit(() -> handle(clientSocket));
-                System.out.println("Response sent, connection closed");
+                pool.submit(() -> processHttpRequest(clientSocket));
             }
+
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
-        }finally {
+        } finally {
             pool.shutdown();                          // stop accepting new tasks on exit
         }
     }
 
-    private static void handle(Socket clientSocket)  {
-       try( BufferedReader in = new BufferedReader(
-                new InputStreamReader(clientSocket.getInputStream())
-        );){
-        StringBuilder requestData = new StringBuilder(in.readLine());
-        String line="";
-        while ((line = in.readLine()) != null && !line.isEmpty()) {
-            requestData.append(" "+line);
+    private static void processHttpRequest(Socket clientSocket) {
+        try (InputStream in = clientSocket.getInputStream();) {
+            StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
+            //String line = "";
+//            while ((line = in.readLine()) != null && !line.isEmpty()) {
+//                requestData.append(" " + line);
+//                System.out.println("line---- :  " + line);
+//            }
+            Map<String, String> hdr = getHttpHeaders(in);
+
+            System.out.println("line   ::  " + requestData);
+            List<String> request = Arrays.asList(requestData.toString().split(" "));
+            String httpResponse = buildHttp404();
+          //  String msgBody = "";
+            String method = request.getFirst();
+            String url = request.get(1);
+
+            if (method.equals("GET")) {
+                String response = processHttpGet(url,hdr);
+                httpResponse = response.isEmpty()?buildHttp404():response;
+
+            }
+            if (method.equals("POST")) {
+                byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
+                String response = processHttpPost(url,hdr,body);
+                httpResponse = response.isEmpty()?buildHttp404():response;
+            }
+
+            OutputStream out = clientSocket.getOutputStream();
+            out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+            clientSocket.close();
+            System.out.println("Response sent, connection closed");
+        } catch (IOException e) {
+            System.out.println("Client error: " + e.getMessage());
         }
-        System.out.println("line   ::  "+requestData);
-        List<String> request = Arrays.asList(requestData.toString().split(" "));
-        String httpResponse = build404();
 
-        String msgBody = "";
-        String url=request.get(1);
-        if ("GET".equals(request.getFirst())) {
-            if (url.equals("/")||url.isEmpty()) {
-                httpResponse = build200Plain("");
-            }
+    }
 
-            if (url.startsWith("/echo")) {
+    private static String processHttpPost(String url, Map<String, String> hdr, byte[] body) {
+        String response = "";
+        if (url.startsWith("/files/")) {
+            response = createAndSaveBytesToFile(url.substring("/files/".length()), body);
+        }
+        return response;
 
-                msgBody = url.substring(url.indexOf('o') + 2);
-                httpResponse=build200Plain(msgBody);
-                }
-            if (url.startsWith("/user-agent")) {
-                msgBody= request.get(request.indexOf("User-Agent:")+1);
-                httpResponse=build200Plain(msgBody);
+    }
 
-            }
-            if (url.startsWith("/files")) {
-                httpResponse=getFileResponse(url.substring("/files/".length()));
-            }
+    private static String processHttpGet(String url, Map<String, String> hdr) {
+         String httpResponse="",msgBody="";
+        if (url.equals("/") || url.isEmpty()) {
+            httpResponse = buildHttp200("");
         }
 
-        OutputStream out = clientSocket.getOutputStream();
-        out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
-        clientSocket.close();
-       } catch (IOException e) {
-           System.out.println("Client error: " + e.getMessage());
-       }
+        if (url.startsWith("/echo")) {
 
+            msgBody = url.substring(url.indexOf('o') + 2);
+            httpResponse = buildHttp200(msgBody);
+        }
+        if (url.startsWith("/user-agent")) {
+            msgBody = hdr.getOrDefault("User-Agent", "");
+          //  msgBody = request.get(request.indexOf("User-Agent:") + 1);
+            httpResponse = buildHttp200(msgBody);
+
+        }
+
+        if (url.startsWith("/files")) {
+            httpResponse = getFileResponse(url.substring("/files/".length()));
+        }
+        return httpResponse;
+    }
+
+    private static Map<String, String> getHttpHeaders(InputStream in) {
+        Map<String, String> hdr = new HashMap<>();
+        String line;
+        while (!(line = readBytesToAscii(in).trim()).isEmpty()) {
+            int c = line.indexOf(':');
+            if (c > 0) hdr.put(line.substring(0,c).toLowerCase(),
+                    line.substring(c+1).trim());
+        }
+        return hdr;
     }
 
     private static String getFileResponse(String fileName) {
@@ -92,7 +134,7 @@ public class Main {
             /* sanitise ".." etc. */
             Path p = rootDir.resolve(fileName).normalize();
             if (!p.startsWith(rootDir) || !Files.exists(p) || !Files.isRegularFile(p)) {
-                return build404();
+                return buildHttp404();
             }
 
             byte[] bytes = Files.readAllBytes(p);
@@ -104,11 +146,11 @@ public class Main {
             return sb.toString() + new String(bytes, StandardCharsets.UTF_8); // keep raw bytes
 
         } catch (IOException e) {
-            return build404();   // I/O error: treat as not-found
+            return buildHttp404();   // I/O error: treat as not-found
         }
     }
 
-    private static String build200Plain(String body) {
+    private static String buildHttp200(String body) {
         return "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/plain\r\n"
                 + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n"
@@ -116,7 +158,57 @@ public class Main {
                 + body;
     }
 
-    private static String build404() {
+    private static String buildHttp404() {
         return "HTTP/1.1 404 Not Found\r\n\r\n";
     }
+
+    private static byte[] readBytesFromHttpRequestBody(InputStream in, Map<String, String> hdr) throws IOException {
+        int contentLen = Integer.parseInt(hdr.getOrDefault("content-length", "0"));
+        byte[] body = new byte[contentLen];
+        if (contentLen > 0) {
+            int off = 0;
+            while (off < body.length) {
+                int r = in.read(body, off, body.length - off);
+                if (r == -1) throw new EOFException("Stream ended early");
+                off += r;
+            }
+        }
+        return body;
+    }
+
+    private static String createAndSaveBytesToFile(String fileName, byte[] data) {
+        try {
+            Path p = rootDir.resolve(fileName).normalize();
+            if (!p.startsWith(rootDir)) return buildHttp404();       // path-traversal guard
+            Files.createDirectories(p.getParent());
+            Files.write(p, data);
+            return buildHttp200("");//"HTTP/1.1 201 Created\r\n\r\n";
+        } catch (IOException e) {
+            return buildHttp500();
+        }
+    }
+
+    private static String buildHttp500() {
+        return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
+
+    /** Read a CRLF-terminated line from a byte stream (no charset decoding). */
+    private static String readBytesToAscii(InputStream in) {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream(128);
+        int prev = -1, cur;
+        try{
+            while ((cur = in.read()) != -1) {
+            if (prev == '\r' && cur == '\n') {
+                buf.write('\r'); // include CRLF in buffer if you need it
+                buf.write('\n');
+                break;
+            }
+            buf.write(cur);
+            prev = cur;
+        }
+           // HTTP header = ASCII
+    }catch (IOException e) {}
+        return buf.toString(StandardCharsets.US_ASCII);
+    }
+
 }
