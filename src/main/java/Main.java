@@ -145,6 +145,7 @@ public class Main {
 
     private static String buildHttp200(String body, Map<String, String> hdr) {
         List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
+        encodingTypes.replaceAll(String::trim);
         String encodingHeaderValue = encodingTypes.contains("gzip")?"Content-Encoding: "+"gzip\r\n" : "";
         return "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/plain\r\n"
