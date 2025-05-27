@@ -182,7 +182,7 @@ public class Main {
             if (!p.startsWith(rootDir)) return buildHttp404();       // path-traversal guard
             Files.createDirectories(p.getParent());
             Files.write(p, data);
-            return buildHttp200("");//"HTTP/1.1 201 Created\r\n\r\n";
+            return buildHttp201();//"HTTP/1.1 201 Created\r\n\r\n";
         } catch (IOException e) {
             return buildHttp500();
         }
@@ -190,6 +190,10 @@ public class Main {
 
     private static String buildHttp500() {
         return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
+
+    private static String buildHttp201() {
+        return "HTTP/1.1 201 Created\r\n\r\n";
     }
 
     /** Read a CRLF-terminated line from a byte stream (no charset decoding). */
