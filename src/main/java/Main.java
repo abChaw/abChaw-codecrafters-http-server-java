@@ -144,13 +144,12 @@ public class Main {
     }
 
     private static String buildHttp200(String body, Map<String, String> hdr) {
-        String contEncodingHdr =hdr.getOrDefault("accept-encoding", "");
-        if(contEncodingHdr.equals("invalid-encoding")) contEncodingHdr="";
-        contEncodingHdr = contEncodingHdr.isEmpty()?"":"Content-Encoding: "+contEncodingHdr + "\r\n";
+        List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
+        String encodingHeaderValue = encodingTypes.contains("gzip")?"Content-Encoding: "+"gzip\r\n" : "";
         return "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/plain\r\n"
                 + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n"
-                + contEncodingHdr
+                + encodingHeaderValue
                 + "\r\n"
                 + body;
     }
