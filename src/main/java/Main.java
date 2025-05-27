@@ -105,7 +105,7 @@ public class Main {
             httpResponse = buildHttp200(msgBody);
         }
         if (url.startsWith("/user-agent")) {
-            msgBody = hdr.getOrDefault("User-Agent", "");
+            msgBody = hdr.getOrDefault("user-agent", "");
           //  msgBody = request.get(request.indexOf("User-Agent:") + 1);
             httpResponse = buildHttp200(msgBody);
 
