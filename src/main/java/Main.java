@@ -96,18 +96,18 @@ public class Main {
     private static String processHttpGet(String url, Map<String, String> hdr) {
          String httpResponse="",msgBody="";
         if (url.equals("/") || url.isEmpty()) {
-            httpResponse = buildHttp200("");
+            httpResponse = buildHttp200("", hdr);
         }
 
         if (url.startsWith("/echo")) {
 
             msgBody = url.substring(url.indexOf('o') + 2);
-            httpResponse = buildHttp200(msgBody);
+            httpResponse = buildHttp200(msgBody,hdr);
         }
         if (url.startsWith("/user-agent")) {
             msgBody = hdr.getOrDefault("user-agent", "");
           //  msgBody = request.get(request.indexOf("User-Agent:") + 1);
-            httpResponse = buildHttp200(msgBody);
+            httpResponse = buildHttp200(msgBody, hdr);
 
         }
 
@@ -150,10 +150,14 @@ public class Main {
         }
     }
 
-    private static String buildHttp200(String body) {
+    private static String buildHttp200(String body, Map<String, String> hdr) {
+        String contEncodingHdr =hdr.getOrDefault("content-encoding", "");
+        if(contEncodingHdr.equals("invalid-encoding")) contEncodingHdr="";
+        contEncodingHdr = contEncodingHdr.isEmpty()?"":"Content-Encoding: "+contEncodingHdr + "\r\n";
         return "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/plain\r\n"
                 + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n"
+                + contEncodingHdr
                 + "\r\n"
                 + body;
     }
