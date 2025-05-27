@@ -49,17 +49,11 @@ public class Main {
     private static void processHttpRequest(Socket clientSocket) {
         try (InputStream in = clientSocket.getInputStream();) {
             StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
-            //String line = "";
-//            while ((line = in.readLine()) != null && !line.isEmpty()) {
-//                requestData.append(" " + line);
-//                System.out.println("line---- :  " + line);
-//            }
             Map<String, String> hdr = getHttpHeaders(in);
 
             System.out.println("line   ::  " + requestData);
             List<String> request = Arrays.asList(requestData.toString().split(" "));
             String httpResponse = buildHttp404();
-          //  String msgBody = "";
             String method = request.getFirst();
             String url = request.get(1);
 
@@ -106,7 +100,6 @@ public class Main {
         }
         if (url.startsWith("/user-agent")) {
             msgBody = hdr.getOrDefault("user-agent", "");
-          //  msgBody = request.get(request.indexOf("User-Agent:") + 1);
             httpResponse = buildHttp200(msgBody, hdr);
 
         }
@@ -151,7 +144,7 @@ public class Main {
     }
 
     private static String buildHttp200(String body, Map<String, String> hdr) {
-        String contEncodingHdr =hdr.getOrDefault("content-encoding", "");
+        String contEncodingHdr =hdr.getOrDefault("accept-encoding", "");
         if(contEncodingHdr.equals("invalid-encoding")) contEncodingHdr="";
         contEncodingHdr = contEncodingHdr.isEmpty()?"":"Content-Encoding: "+contEncodingHdr + "\r\n";
         return "HTTP/1.1 200 OK\r\n"
