@@ -102,11 +102,9 @@ public class Main {
         if (url.startsWith("/user-agent")) {
             msgBody = hdr.getOrDefault("user-agent", "");
             httpResponse = buildHttp200(out, msgBody, hdr);
-
         }
-
         if (url.startsWith("/files")) {
-            httpResponse = getFileResponse(url.substring("/files/".length()));
+            httpResponse = getFileResponse(out,url.substring("/files/".length()));
         }
         return httpResponse;
     }
@@ -122,10 +120,9 @@ public class Main {
         return hdr;
     }
 
-    private static String getFileResponse(String fileName) {
+    private static String getFileResponse(OutputStream out, String fileName) {
 
         try {
-            /* sanitise ".." etc. */
             Path p = rootDir.resolve(fileName).normalize();
             if (!p.startsWith(rootDir) || !Files.exists(p) || !Files.isRegularFile(p)) {
                 return buildHttp404();
@@ -137,11 +134,19 @@ public class Main {
                     .append("Content-Type: application/octet-stream\r\n")
                     .append("Content-Length: ").append(bytes.length).append("\r\n")
                     .append("\r\n");
-            return sb.toString() + new String(bytes, StandardCharsets.UTF_8); // keep raw bytes
+             String s=sb.toString() + new String(bytes, StandardCharsets.UTF_8); // keep raw bytes
 
+            try {
+                out.write(s.getBytes(StandardCharsets.UTF_8));
+              //  out.write(payload);
+                out.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } catch (IOException e) {
             return buildHttp404();   // I/O error: treat as not-found
         }
+        return "ddd";
     }
 
     private static String buildHttp200(OutputStream out, String body, Map<String, String> hdr) {
