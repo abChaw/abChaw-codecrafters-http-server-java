@@ -69,7 +69,6 @@ public class Main {
                 httpResponse = response.isEmpty()?buildHttp404():response;
             }
 
-
             out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
             clientSocket.close();
             System.out.println("Response sent, connection closed");
@@ -125,7 +124,14 @@ public class Main {
         try {
             Path p = rootDir.resolve(fileName).normalize();
             if (!p.startsWith(rootDir) || !Files.exists(p) || !Files.isRegularFile(p)) {
-                return buildHttp404();
+                //return buildHttp404();
+                try {
+                    out.write(buildHttp404().getBytes(StandardCharsets.UTF_8));
+                    //  out.write(payload);
+                    out.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             byte[] bytes = Files.readAllBytes(p);
