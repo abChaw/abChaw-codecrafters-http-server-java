@@ -49,8 +49,9 @@ public class Main {
     }
 
     private static void processHttpRequest(Socket clientSocket) {
-        try (InputStream in = clientSocket.getInputStream();) {
-            while(true) {
+        while(true) {
+            try (InputStream in = clientSocket.getInputStream();) {
+
                 StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
                 Map<String, String> hdr = getHttpHeaders(in);
                 boolean wantsClose =
@@ -85,11 +86,11 @@ public class Main {
                     break;
                 }
                 System.out.println("Response sent, connection closed");
-            }
-        } catch (IOException e) {
-            System.out.println("Client error: " + e.getMessage());
-        }
 
+            } catch (IOException e) {
+                System.out.println("Client error: " + e.getMessage());
+            }
+        }
     }
 
     private static String processHttpPost(String url, Map<String, String> hdr, byte[] body) {
