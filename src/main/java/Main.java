@@ -38,6 +38,7 @@ public class Main {
             while (true) {
                 Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
                 pool.submit(() -> processHttpRequest(clientSocket));
+
             }
 
         } catch (IOException e) {
@@ -65,7 +66,7 @@ public class Main {
                     out.write(response.getBytes(StandardCharsets.UTF_8));
 
                 }
-               // clientSocket.close();
+                if(!clientSocket.isConnected()) processHttpRequest(clientSocket);
                 //httpResponse = response.isEmpty()?buildHttp404():response;
                 return;
             }
