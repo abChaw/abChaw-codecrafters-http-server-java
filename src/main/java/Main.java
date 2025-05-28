@@ -60,7 +60,13 @@ public class Main {
             OutputStream out = clientSocket.getOutputStream();
             if (method.equals("GET")) {
                 String response = processHttpGet(out,url,hdr);
-                httpResponse = response.isEmpty()?buildHttp404():response;
+                if(response.isEmpty()){
+                    response = buildHttp404();
+                    out.write(response.getBytes(StandardCharsets.UTF_8));
+
+                }
+                clientSocket.close();
+                //httpResponse = response.isEmpty()?buildHttp404():response;
                 return;
             }
             if (method.equals("POST")) {
@@ -174,7 +180,7 @@ public class Main {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-      return "";
+      return "dd";
     }
 
     private static byte []  compressPayload(String body, Map<String, String> hdr) {
