@@ -65,7 +65,7 @@ public class Main {
                     out.write(response.getBytes(StandardCharsets.UTF_8));
 
                 }
-                clientSocket.close();
+               // clientSocket.close();
                 //httpResponse = response.isEmpty()?buildHttp404():response;
                 return;
             }
