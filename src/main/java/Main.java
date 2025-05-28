@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.zip.GZIPOutputStream;
 
 public class Main {
 
@@ -56,11 +57,11 @@ public class Main {
             String httpResponse = buildHttp404();
             String method = request.getFirst();
             String url = request.get(1);
-
+            OutputStream out = clientSocket.getOutputStream();
             if (method.equals("GET")) {
-                String response = processHttpGet(url,hdr);
+                String response = processHttpGet(out,url,hdr);
                 httpResponse = response.isEmpty()?buildHttp404():response;
-
+                return;
             }
             if (method.equals("POST")) {
                 byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
@@ -68,7 +69,7 @@ public class Main {
                 httpResponse = response.isEmpty()?buildHttp404():response;
             }
 
-            OutputStream out = clientSocket.getOutputStream();
+
             out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
             clientSocket.close();
             System.out.println("Response sent, connection closed");
@@ -87,20 +88,20 @@ public class Main {
 
     }
 
-    private static String processHttpGet(String url, Map<String, String> hdr) {
+    private static String processHttpGet(OutputStream out, String url, Map<String, String> hdr) {
          String httpResponse="",msgBody="";
         if (url.equals("/") || url.isEmpty()) {
-            httpResponse = buildHttp200("", hdr);
+            httpResponse = buildHttp200(out, "", hdr);
         }
 
         if (url.startsWith("/echo")) {
 
             msgBody = url.substring(url.indexOf('o') + 2);
-            httpResponse = buildHttp200(msgBody,hdr);
+            httpResponse = buildHttp200(out,msgBody,hdr);
         }
         if (url.startsWith("/user-agent")) {
             msgBody = hdr.getOrDefault("user-agent", "");
-            httpResponse = buildHttp200(msgBody, hdr);
+            httpResponse = buildHttp200(out, msgBody, hdr);
 
         }
 
@@ -143,16 +144,49 @@ public class Main {
         }
     }
 
-    private static String buildHttp200(String body, Map<String, String> hdr) {
-        List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
+    private static String buildHttp200(OutputStream out, String body, Map<String, String> hdr) {
+         List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
         encodingTypes.replaceAll(String::trim);
         String encodingHeaderValue = encodingTypes.contains("gzip")?"Content-Encoding: "+"gzip\r\n" : "";
-        return "HTTP/1.1 200 OK\r\n"
+        byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+
+        if(!encodingHeaderValue.isEmpty()) {payload = compressPayload(body,hdr);}
+        String response= "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/plain\r\n"
-                + "Content-Length: " + body.getBytes(StandardCharsets.UTF_8).length + "\r\n"
+                + "Content-Length: " + payload.length + "\r\n"
                 + encodingHeaderValue
-                + "\r\n"
-                + body;
+                + "\r\n";
+        try {
+            out.write(response.getBytes(StandardCharsets.UTF_8));
+            out.write(payload);
+            out.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+      return "";
+    }
+
+    private static byte []  compressPayload(String body, Map<String, String> hdr) {
+
+       // List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
+       // encodingTypes.replaceAll(String::trim);
+       // String encodingHeaderValue = encodingTypes.contains("gzip")?"Content-Encoding: "+"gzip\r\n" : "";
+//        byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+//        if(!encodingHeaderValue.isEmpty()) {
+//            //payload = compressPayload(body);
+//        }
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOutputStream = null;
+        try {
+            gzipOutputStream = new GZIPOutputStream(bos);
+            gzipOutputStream.write(body.getBytes(StandardCharsets.UTF_8));
+            gzipOutputStream.finish();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return bos.toByteArray();
+
     }
 
     private static String buildHttp404() {
