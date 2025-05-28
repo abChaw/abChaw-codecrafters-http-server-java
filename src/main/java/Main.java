@@ -50,7 +50,7 @@ public class Main {
 
     private static void processHttpRequest(Socket clientSocket) {
 
-            try(InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream();){
+            try{InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream();
                 while(true) {
                     StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
                     Map<String, String> hdr = getHttpHeaders(in);
@@ -71,15 +71,16 @@ public class Main {
                         }
                         // clientSocket.close();
                         //httpResponse = response.isEmpty()?buildHttp404():response;
-                        return;
+                        //return;
                     }
                     if (method.equals("POST")) {
                         byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
                         String response = processHttpPost(url, hdr, body);
                         httpResponse = response.isEmpty() ? buildHttp404() : response;
+                        out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
                     }
 
-                    out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+
                     if (wantsClose) {
                         clientSocket.close();
                         in.close();
