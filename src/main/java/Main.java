@@ -50,35 +50,42 @@ public class Main {
 
     private static void processHttpRequest(Socket clientSocket) {
         try (InputStream in = clientSocket.getInputStream();) {
-            StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
-            Map<String, String> hdr = getHttpHeaders(in);
+            while(true) {
+                StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
+                Map<String, String> hdr = getHttpHeaders(in);
+                boolean wantsClose =
+                        "close".equalsIgnoreCase(hdr.getOrDefault("connection", ""));
+                System.out.println("line   ::  " + requestData);
+                List<String> request = Arrays.asList(requestData.toString().split(" "));
+                String httpResponse = buildHttp404();
+                String method = request.getFirst();
+                String url = request.get(1);
+                OutputStream out = clientSocket.getOutputStream();
+                if (method.equals("GET")) {
+                    String response = processHttpGet(out, url, hdr);
+                    if (response.isEmpty()) {
+                        response = buildHttp404();
+                        out.write(response.getBytes(StandardCharsets.UTF_8));
 
-            System.out.println("line   ::  " + requestData);
-            List<String> request = Arrays.asList(requestData.toString().split(" "));
-            String httpResponse = buildHttp404();
-            String method = request.getFirst();
-            String url = request.get(1);
-            OutputStream out = clientSocket.getOutputStream();
-            if (method.equals("GET")) {
-                String response = processHttpGet(out,url,hdr);
-                if(response.isEmpty()){
-                    response = buildHttp404();
-                    out.write(response.getBytes(StandardCharsets.UTF_8));
-
+                    }
+                    // clientSocket.close();
+                    //httpResponse = response.isEmpty()?buildHttp404():response;
+                    return;
                 }
-                if(!clientSocket.isConnected()) processHttpRequest(clientSocket);
-                //httpResponse = response.isEmpty()?buildHttp404():response;
-                return;
-            }
-            if (method.equals("POST")) {
-                byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
-                String response = processHttpPost(url,hdr,body);
-                httpResponse = response.isEmpty()?buildHttp404():response;
-            }
+                if (method.equals("POST")) {
+                    byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
+                    String response = processHttpPost(url, hdr, body);
+                    httpResponse = response.isEmpty() ? buildHttp404() : response;
+                }
 
-            out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
-            clientSocket.close();
-            System.out.println("Response sent, connection closed");
+                out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+                if (wantsClose) {
+
+                    clientSocket.close();
+                    break;
+                }
+                System.out.println("Response sent, connection closed");
+            }
         } catch (IOException e) {
             System.out.println("Client error: " + e.getMessage());
         }
