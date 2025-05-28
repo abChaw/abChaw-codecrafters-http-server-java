@@ -50,8 +50,8 @@ public class Main {
 
     private static void processHttpRequest(Socket clientSocket) {
         while(true) {
-            try (InputStream in = clientSocket.getInputStream();) {
-
+            try{
+                InputStream in = clientSocket.getInputStream();
                 StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
                 Map<String, String> hdr = getHttpHeaders(in);
                 boolean wantsClose =
@@ -81,13 +81,14 @@ public class Main {
 
                 out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
                 if (wantsClose) {
-
                     clientSocket.close();
+                    in.close();
                     break;
                 }
                 System.out.println("Response sent, connection closed");
 
             } catch (IOException e) {
+                
                 System.out.println("Client error: " + e.getMessage());
             }
         }
