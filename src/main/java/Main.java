@@ -82,8 +82,9 @@ public class Main {
 
 
                     if (wantsClose) {
-                        clientSocket.close();
+                        out.flush();
                         in.close();
+                        clientSocket.close();
                         break;
                     }
                     System.out.println("Response sent, connection closed");
@@ -91,6 +92,9 @@ public class Main {
             } catch (IOException e) {
 
                 System.out.println("Client error: " + e.getMessage());
+            }
+            finally {
+
             }
 
     }
@@ -176,6 +180,8 @@ public class Main {
          List<String> encodingTypes = Arrays.asList(hdr.getOrDefault("accept-encoding", "").split(","));
         encodingTypes.replaceAll(String::trim);
         String encodingHeaderValue = encodingTypes.contains("gzip")?"Content-Encoding: "+"gzip\r\n" : "";
+        String connectionHeaderValue = hdr.get("connection");
+        if ("close".equalsIgnoreCase(connectionHeaderValue)) {connectionHeaderValue="Connection: close\r\n";} else connectionHeaderValue="";
         byte[] payload = body.getBytes(StandardCharsets.UTF_8);
 
         if(!encodingHeaderValue.isEmpty()) {payload = compressPayload(body,hdr);}
@@ -183,6 +189,7 @@ public class Main {
                 + "Content-Type: text/plain\r\n"
                 + "Content-Length: " + payload.length + "\r\n"
                 + encodingHeaderValue
+                + connectionHeaderValue
                 + "\r\n";
         try {
             out.write(response.getBytes(StandardCharsets.UTF_8));
