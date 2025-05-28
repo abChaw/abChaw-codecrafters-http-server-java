@@ -49,49 +49,49 @@ public class Main {
     }
 
     private static void processHttpRequest(Socket clientSocket) {
-        while(true) {
-            try{
-                InputStream in = clientSocket.getInputStream();
-                StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
-                Map<String, String> hdr = getHttpHeaders(in);
-                boolean wantsClose =
-                        "close".equalsIgnoreCase(hdr.getOrDefault("connection", ""));
-                System.out.println("line   ::  " + requestData);
-                List<String> request = Arrays.asList(requestData.toString().split(" "));
-                String httpResponse = buildHttp404();
-                String method = request.getFirst();
-                String url = request.get(1);
-                OutputStream out = clientSocket.getOutputStream();
-                if (method.equals("GET")) {
-                    String response = processHttpGet(out, url, hdr);
-                    if (response.isEmpty()) {
-                        response = buildHttp404();
-                        out.write(response.getBytes(StandardCharsets.UTF_8));
 
+            try(InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream();){
+                while(true) {
+                    StringBuilder requestData = new StringBuilder(readBytesToAscii(in));
+                    Map<String, String> hdr = getHttpHeaders(in);
+                    boolean wantsClose =
+                            "close".equalsIgnoreCase(hdr.getOrDefault("connection", ""));
+                    System.out.println("line   ::  " + requestData);
+                    List<String> request = Arrays.asList(requestData.toString().split(" "));
+                    String httpResponse = buildHttp404();
+                    String method = request.getFirst();
+                    String url = request.get(1);
+
+                    if (method.equals("GET")) {
+                        String response = processHttpGet(out, url, hdr);
+                        if (response.isEmpty()) {
+                            response = buildHttp404();
+                            out.write(response.getBytes(StandardCharsets.UTF_8));
+
+                        }
+                        // clientSocket.close();
+                        //httpResponse = response.isEmpty()?buildHttp404():response;
+                        return;
                     }
-                    // clientSocket.close();
-                    //httpResponse = response.isEmpty()?buildHttp404():response;
-                    return;
-                }
-                if (method.equals("POST")) {
-                    byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
-                    String response = processHttpPost(url, hdr, body);
-                    httpResponse = response.isEmpty() ? buildHttp404() : response;
-                }
+                    if (method.equals("POST")) {
+                        byte[] body = readBytesFromHttpRequestBody(clientSocket.getInputStream(), hdr);
+                        String response = processHttpPost(url, hdr, body);
+                        httpResponse = response.isEmpty() ? buildHttp404() : response;
+                    }
 
-                out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
-                if (wantsClose) {
-                    clientSocket.close();
-                    in.close();
-                    break;
+                    out.write(httpResponse.getBytes(StandardCharsets.UTF_8));
+                    if (wantsClose) {
+                        clientSocket.close();
+                        in.close();
+                        break;
+                    }
+                    System.out.println("Response sent, connection closed");
                 }
-                System.out.println("Response sent, connection closed");
-
             } catch (IOException e) {
-                
+
                 System.out.println("Client error: " + e.getMessage());
             }
-        }
+
     }
 
     private static String processHttpPost(String url, Map<String, String> hdr, byte[] body) {
